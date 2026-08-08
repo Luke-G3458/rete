@@ -1,0 +1,12 @@
+[package]
+name = "rete-nn"
+version = "0.1.0"
+edition = "2024"
+authors = ["Luke Gerth"]
+description = "A light and fast neural network library"
+license = "MIT"
+repository = "https://github.com/Luke-G3458/rete"
+readme = "README.md"
+
+[dependencies]
+rand = "0.10.2"
