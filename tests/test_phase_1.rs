@@ -1,5 +1,5 @@
 use rand::{SeedableRng, rngs::StdRng};
-use rete_nn::phase_1::{Layer, Network, Neuron, Value, train};
+use rete_nn::phase_1::{Layer, Network, Neuron, Value};
 use std::{cell::Cell, rc::Rc};
 
 fn assert_approximately_equal(actual: Value, expected: f64) {
@@ -275,14 +275,14 @@ fn random_network_uses_each_adjacent_pair_of_widths() {
 }
 
 #[test]
-fn neuron_forward_multiplies_the_weighted_sum_by_its_bias() {
+fn neuron_forward_adds_its_bias_to_the_weighted_sum() {
     let neuron = Neuron::new(
         vec![Value::new(2.0, None), Value::new(-1.0, None)],
         Value::new(0.5, None),
     );
     let inputs = [Value::new(3.0, None), Value::new(4.0, None)];
 
-    assert_approximately_equal(neuron.forward(&inputs), 1.0_f64.tanh());
+    assert_approximately_equal(neuron.forward(&inputs), 2.5_f64.tanh());
 }
 
 #[test]
@@ -299,7 +299,7 @@ fn network_forward_passes_each_layers_outputs_to_the_next_layer() {
     let network = Network::new(vec![inputs, first, second]);
 
     let outputs = network.forward();
-    let expected = (-3.0 * 8.0_f64.tanh()).tanh();
+    let expected = (3.0 * 9.0_f64.tanh() - 1.0).tanh();
 
     assert_eq!(outputs.len(), 1);
     assert_approximately_equal(outputs[0].clone(), expected);
@@ -331,9 +331,9 @@ fn network_forward_and_backward_pass_produce_expected_values() {
         )]),
     ]);
 
-    let first_pre_activation = input_data * first_weight_data * first_bias_data;
+    let first_pre_activation = input_data * first_weight_data + first_bias_data;
     let first_output = first_pre_activation.tanh();
-    let second_pre_activation = first_output * second_weight_data * second_bias_data;
+    let second_pre_activation = first_output * second_weight_data + second_bias_data;
     let expected_output = second_pre_activation.tanh();
 
     let outputs = network.forward();
@@ -344,30 +344,26 @@ fn network_forward_and_backward_pass_produce_expected_values() {
 
     let second_activation_gradient = 1.0 - expected_output.powi(2);
     let first_activation_gradient = 1.0 - first_output.powi(2);
-    let gradient_into_first_layer =
-        second_activation_gradient * second_weight_data * second_bias_data;
+    let gradient_into_first_layer = second_activation_gradient * second_weight_data;
 
     assert_eq!(outputs[0].gradient(), 1.0);
     assert_number_approximately_equal(
         input.gradient(),
-        gradient_into_first_layer * first_activation_gradient * first_weight_data * first_bias_data,
+        gradient_into_first_layer * first_activation_gradient * first_weight_data,
     );
     assert_number_approximately_equal(
         first_weight.gradient(),
-        gradient_into_first_layer * first_activation_gradient * input_data * first_bias_data,
+        gradient_into_first_layer * first_activation_gradient * input_data,
     );
     assert_number_approximately_equal(
         first_bias.gradient(),
-        gradient_into_first_layer * first_activation_gradient * input_data * first_weight_data,
+        gradient_into_first_layer * first_activation_gradient,
     );
     assert_number_approximately_equal(
         second_weight.gradient(),
-        second_activation_gradient * first_output * second_bias_data,
+        second_activation_gradient * first_output,
     );
-    assert_number_approximately_equal(
-        second_bias.gradient(),
-        second_activation_gradient * first_output * second_weight_data,
-    );
+    assert_number_approximately_equal(second_bias.gradient(), second_activation_gradient);
 }
 
 #[test]
@@ -426,14 +422,14 @@ fn random_network_forward_and_backward_pass_match_its_generated_parameters() {
     let hidden_outputs: Vec<f64> = hidden_weighted_sums
         .iter()
         .zip(&hidden_biases)
-        .map(|(weighted_sum, bias)| (weighted_sum * bias).tanh())
+        .map(|(weighted_sum, bias)| (weighted_sum + bias).tanh())
         .collect();
     let output_weighted_sum: f64 = hidden_outputs
         .iter()
         .zip(&output_weights)
         .map(|(input, weight)| input * weight)
         .sum();
-    let expected_output = (output_weighted_sum * output_bias).tanh();
+    let expected_output = (output_weighted_sum + output_bias).tanh();
 
     let outputs = network.forward();
     assert_eq!(outputs.len(), 1);
@@ -446,38 +442,32 @@ fn random_network_forward_and_backward_pass_match_its_generated_parameters() {
 
     for hidden_index in 0..3 {
         let hidden_activation_gradient = 1.0 - hidden_outputs[hidden_index].powi(2);
-        let gradient_into_hidden = output_activation_gradient
-            * output_bias
-            * output_weights[hidden_index]
-            * hidden_activation_gradient;
+        let gradient_into_hidden =
+            output_activation_gradient * output_weights[hidden_index] * hidden_activation_gradient;
 
         for input_index in 0..2 {
-            expected_input_gradients[input_index] += gradient_into_hidden
-                * hidden_biases[hidden_index]
-                * hidden_weights[hidden_index][input_index];
+            expected_input_gradients[input_index] +=
+                gradient_into_hidden * hidden_weights[hidden_index][input_index];
             assert_number_close(
                 hidden_neurons[hidden_index].weights[input_index].gradient(),
-                gradient_into_hidden * hidden_biases[hidden_index] * input_data[input_index],
+                gradient_into_hidden * input_data[input_index],
             );
         }
 
         assert_number_close(
             hidden_neurons[hidden_index].bias.gradient(),
-            gradient_into_hidden * hidden_weighted_sums[hidden_index],
+            gradient_into_hidden,
         );
         assert_number_close(
             output_neuron.weights[hidden_index].gradient(),
-            output_activation_gradient * output_bias * hidden_outputs[hidden_index],
+            output_activation_gradient * hidden_outputs[hidden_index],
         );
     }
 
     for (input, expected_gradient) in network.inputs().iter().zip(expected_input_gradients) {
         assert_number_close(input.gradient(), expected_gradient);
     }
-    assert_number_close(
-        output_neuron.bias.gradient(),
-        output_activation_gradient * output_weighted_sum,
-    );
+    assert_number_close(output_neuron.bias.gradient(), output_activation_gradient);
 }
 
 #[test]
@@ -554,8 +544,7 @@ fn create_and_train_network_from_data() {
     ];
     let outputs = vec![vec![1.0], vec![-1.0], vec![-1.0], vec![1.0]];
 
-    let loss = train(
-        &mut nn,
+    let loss = nn.train_batch(
         inputs
             .into_iter()
             .zip(outputs)
