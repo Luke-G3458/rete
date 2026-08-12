@@ -13,10 +13,10 @@ Basic forward and back prop functionality, allowing bad code and no optimization
 
 Usage:
 ```rust
-use rete_nn::phase_1::{Network, train};
+use rete_nn::phase_1::Network;
 
 fn main() {
-    let mut network = Network::new_random(vec![3, 4, 2]);
+    let mut nn = Network::new_random(vec![3, 4, 2]);
 
     let inputs = vec![
         vec![2.0, 3.0, -1.0],
@@ -31,16 +31,29 @@ fn main() {
         vec![1.0, -1.0],
     ];
 
-    train(
-        &mut nn,
+    nn.train_batch(
         inputs
             .into_iter()
             .zip(outputs)
             .collect::<Vec<(Vec<f64>, Vec<f64>)>>(),
         0.05,
-        1000,
+        10000,
+    );
+
+    let prediction = nn.predict(&vec![2.0, 3.0, -1.0]);
+
+    println!(
+        "results should be close to 1.0 and -1.0\n{} and {}",
+        prediction[0].data(),
+        prediction[1].data()
     );
 }
+```
+
+Output:
+```
+results should be close to 1.0 and -1.0
+0.9980129081740541 and -0.9977496787228837
 ```
 
 ## phase 2

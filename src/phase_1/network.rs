@@ -92,4 +92,50 @@ impl Network {
             layer.bump(rate);
         }
     }
+
+    /// make a prediction based on the given inputs
+    pub fn predict(&mut self, inputs: &Vec<f64>) -> Vec<Value> {
+        self.set_inputs(inputs.iter().map(|v| Value::new(*v, None)).collect());
+        self.forward()
+    }
+
+    /// train the network on a single batch of outputs and predictions
+    pub fn train_step(&mut self, prediction: &Vec<Value>, target: &Vec<f64>, rate: f64) -> f64 {
+        let mut loss = Value::new(0.0, None);
+        for (p, t) in prediction.iter().zip(target) {
+            loss = loss + (p.clone() - Value::from(*t)).pow(2.0);
+        }
+        self.zero_gradients();
+        loss.set_gradient(1.0);
+        loss.backward_recursive();
+        self.bump(rate);
+        loss.data()
+    }
+
+    /// train the network on a given dataset using backpropagation
+    pub fn train_batch(
+        &mut self,
+        data: Vec<(Vec<f64>, Vec<f64>)>,
+        rate: f64,
+        epochs: usize,
+    ) -> f64 {
+        let mut loss = Value::from(0.0);
+        for _ in 0..epochs {
+            loss = Value::from(0.0);
+            let mut predictions = Vec::new();
+            for (inputs, _) in &data {
+                predictions.push(self.predict(inputs));
+            }
+            for (prediction, (_, target)) in predictions.iter().zip(&data) {
+                for (p, t) in prediction.iter().zip(target) {
+                    loss = loss + (p.clone() - Value::from(*t)).pow(2.0);
+                }
+            }
+            self.zero_gradients();
+            loss.set_gradient(1.0);
+            loss.backward_recursive();
+            self.bump(rate);
+        }
+        loss.data()
+    }
 }

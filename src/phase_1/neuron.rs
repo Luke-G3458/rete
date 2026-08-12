@@ -51,7 +51,7 @@ impl Neuron {
                 output + input.clone() * weight.clone()
             });
 
-        (weighted_sum * self.bias.clone()).tanh()
+        (weighted_sum + self.bias.clone()).tanh()
     }
 
     /// zero all gradients of parameters
