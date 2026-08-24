@@ -1,12 +1,13 @@
 # rete
-> fast + small
+> small + fast
+
+![image](./rete.png)
 
 
-**Goal**: Neural networks that train fast and run faster, written and optimized in rust
+**Goal**: Blazing fast, low-resource, small-scale neural networks that run completely on the stack
 
 ## phase 1
-> Current
-
+> Legacy
 
 Basic forward and back prop functionality, allowing bad code and no optimization. Learn basics of neural networks
 
@@ -57,23 +58,19 @@ results should be close to 1.0 and -1.0
 ```
 
 ## phase 2
-> Up next
+> Current
 
 
-Overhaul design, focusing on and balancing two things:
-- small memory footprint
-- optimized computation speed for forward and backward propagation
+Overhaul design, focusing on:
+- moving to the stack
+- making everything type-checked at compile time
+- removing memory overhead of phase 1 implementation
 
-
-Things to consider:
-- This may require tensor types and operations
-- Phase 1 has lots of memory overhead that may need to be addressed
+Open items:
+- Network initalization API (see [IDEAS.md](IDEAS.md))
 
 ## phase 3
-multi-threaded, optimized for multiple cpu cores
+add an option for moving to the heap for larger models, multi-threaded operations, optimized for multiple cpu cores
 
-## phase 4
+## phase 4??
 gpu??
-
-## Todo
-- [ ] Create tests for benching different phases, evaluating both accuracy/correctness and performance
