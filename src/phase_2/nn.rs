@@ -9,26 +9,42 @@ where
     pub biases: [T; N],
 }
 
-#[derive(Debug, PartialEq)]
-pub struct NetworkNoHidden<T, const I: usize, const N: usize>
+pub enum Recursive<T, const I: usize, const N: usize, R>
 where
-    T: From<f64> + Copy,
+    T: Copy,
 {
-    pub input: Tensor<[T; I]>,
-    pub layer: Layer<T, I, N>,
+    Tuple { layer: Layer<T, I, N>, other: R },
 }
 
-impl<T, const I: usize, const N: usize> NetworkNoHidden<T, I, N>
-where
-    T: From<f64> + Copy,
-{
-    pub fn new() -> Self {
-        Self {
-            input: Tensor::new([T::from(0.0); I]),
+pub struct Network<L> {
+    pub layers: L,
+}
+
+#[macro_export]
+macro_rules! network {
+    // End of the recursive chain.
+    (@layers $ty:ty; $last:expr) => {
+        ()
+    };
+
+    // Build one layer and the remaining chain.
+    (@layers $ty:ty; $input:expr, $output:expr $(, $rest:expr)*) => {
+        Recursive::Tuple {
             layer: Layer {
-                weights: [Tensor::new([T::from(0.0); I]); N],
-                biases: [T::from(0.0); N],
+                weights: [
+                    Tensor::new([<$ty>::default(); $input]);
+                    $output
+                ],
+                biases: [<$ty>::default(); $output],
             },
+            other: $crate::network!(@layers $ty; $output $(, $rest)*),
         }
-    }
+    };
+
+    // Public entry point.
+    ($ty:ty; $input:expr, $output:expr $(, $rest:expr)* $(,)?) => {
+        Network {
+            layers: $crate::network!(@layers $ty; $input, $output $(, $rest)*),
+        }
+    };
 }

@@ -4,7 +4,7 @@
 ![image](./rete.png)
 
 
-**Goal**: Blazing fast, low-resource, small-scale neural networks that run completely on the stack
+**Goal**: Blazing fast, low-resource, small-scale neural networks in rust that run completely on the stack
 
 ## phase 1
 > Legacy
@@ -67,10 +67,7 @@ Overhaul design, focusing on:
 - removing memory overhead of phase 1 implementation
 
 Open items:
-- Network initalization API (see [IDEAS.md](IDEAS.md))
+- Network initalization API (see [IDEAS.md](IDEAS.md)) and architecture (in progress...)
 
 ## phase 3
-add an option for moving to the heap for larger models, multi-threaded operations, optimized for multiple cpu cores
-
-## phase 4??
-gpu??
+add an option for moving to the heap for larger models, include multi-threaded operations, optimize for multiple cpu cores
